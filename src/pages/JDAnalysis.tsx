@@ -170,7 +170,7 @@ const JDAnalysis = () => {
     try {
       setLoading(true);
       const response = await axios.post(
-        "http://localhost:5000/api/match",
+        "https://vercel-backend-main-production.up.railway.app/api/match",
         formData
       );
       const data = response.data;

@@ -47,7 +47,7 @@ const ResumeFeedback: React.FC = () => {
       setIsUploading(true);
       setFeedback(null);
       setStaticFeedback([]);
-      const res = await fetch('http://localhost:5000/api/resume-feedback', {
+      const res = await fetch('https://vercel-backend-main-production.up.railway.app/api/resume-feedback', {
         method: 'POST',
         body: formData,
       });

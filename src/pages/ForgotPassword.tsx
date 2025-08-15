@@ -20,7 +20,7 @@ const ForgotPassword = () => {
     
     try {
       const res = await fetch(
-        `http://localhost:5000/api/auth/security-question?username=${encodeURIComponent(username)}`
+        `https://vercel-backend-main-production.up.railway.app/api/auth/security-question?username=${encodeURIComponent(username)}`
       );
       
       const data = await res.json();
