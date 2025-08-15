@@ -15,10 +15,10 @@ const ResponsiveAppLayout = () => {
 
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Top Navigation Bar */}
-      {(location.pathname === '/' || location.pathname === '/job-tracker' || location.pathname === '/home') && (
-        <div className="fixed top-0 right-0 z-50 p-4">
-          <NotificationBell />
+      {/* Notification Bell - Visible on Home and Job Tracker pages */}
+      {(location.pathname === '/home' || location.pathname === '/job-tracker' || location.pathname.startsWith('/job-tracker/')) && (
+        <div className="fixed top-0 right-0 z-50 p-4 notification-bell-container">
+          <NotificationBell key={location.pathname} />
         </div>
       )}
       
