@@ -92,6 +92,13 @@
     display: none; /* Hide hamburger menu on large screens */
   }
 
+  /* Notification bell positioning for mobile */
+  .notification-bell-container {
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    z-index: 1001;
+  }
   .slide-out-drawer {
     display: none;
   }
