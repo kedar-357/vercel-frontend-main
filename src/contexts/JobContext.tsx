@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
 import api from "@/services/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 export type JobStatus = "applied" | "interview" | "offered" | "rejected";
 
@@ -37,8 +38,9 @@ export const useJobs = () => {
 
 export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const { isAuthenticated } = useAuth();
 
-  // Load jobs from API on mount
+  // Load/clear jobs in response to auth changes
   useEffect(() => {
     const fetchJobs = async () => {
       try {
@@ -50,8 +52,14 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     };
 
-    fetchJobs();
-  }, []);
+    if (isAuthenticated) {
+      // When a user logs in (or switches accounts), fetch their jobs
+      fetchJobs();
+    } else {
+      // On logout, clear all in-memory jobs to avoid cross-user mixing
+      setJobs([]);
+    }
+  }, [isAuthenticated]);
 
   // Add a new job
   const addJob = async (jobData: Omit<Job, "_id">) => {
