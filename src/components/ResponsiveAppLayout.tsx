@@ -47,5 +47,4 @@ const ResponsiveAppLayout = () => {
     </div>
   );
 };
-
 export default ResponsiveAppLayout;
