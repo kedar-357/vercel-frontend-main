@@ -70,13 +70,13 @@ const ForgotPassword = () => {
 
   return (
     <div className="min-h-screen w-full flex flex-col space-bg overflow-hidden">
-      <div className="flex-1 w-full flex items-center justify-center p-4">
+      <div className="flex-1 w-full flex items-center justify-center p-4 sm:p-6 md:p-8">
         {/* Planets and stars UI remains unchanged */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           {/* Planets */}
-          <motion.div className="planet w-64 h-64 rounded-full bg-blue-700/30 border border-blue-500/20 left-[-5%] top-[5%]" />
-          <motion.div className="planet w-36 h-36 rounded-full bg-purple-700/20 border border-purple-500/20 left-[60%] top-[15%]" />
-          <motion.div className="planet w-48 h-48 rounded-full bg-purple-800/30 border border-purple-600/20 right-[-10%] bottom-[10%]" />
+          <motion.div className="planet w-32 h-32 sm:w-48 sm:h-48 md:w-64 md:h-64 rounded-full bg-blue-700/30 border border-blue-500/20 left-[-10%] sm:left-[-5%] top-[5%]" />
+          <motion.div className="planet w-20 h-20 sm:w-28 sm:h-28 md:w-36 md:h-36 rounded-full bg-purple-700/20 border border-purple-500/20 left-[70%] sm:left-[60%] top-[15%]" />
+          <motion.div className="planet w-28 h-28 sm:w-36 sm:h-36 md:w-48 md:h-48 rounded-full bg-purple-800/30 border border-purple-600/20 right-[-15%] sm:right-[-10%] bottom-[10%]" />
           {/* Stars */}
           {[...Array(20)].map((_, i) => (
             <motion.div
@@ -110,20 +110,20 @@ const ForgotPassword = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="w-full max-w-md"
+          className="w-full max-w-sm sm:max-w-md mx-auto px-2 sm:px-0"
         >
-          <div className="space-card p-8 rounded-2xl backdrop-blur-md flex flex-col justify-center">
-            <div className="mb-8 text-white space-y-1">
-              <h1 className="text-3xl font-bold">Forgot Password</h1>
-              <p className="text-sm text-white">Reset your password</p>
+          <div className="space-card p-4 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl backdrop-blur-md flex flex-col justify-center">
+            <div className="mb-6 sm:mb-8 text-white space-y-1">
+              <h1 className="text-2xl sm:text-3xl font-bold">Forgot Password</h1>
+              <p className="text-xs sm:text-sm text-white">Reset your password</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
               <div className="space-y-1">
-                <label htmlFor="username" className="text-sm text-white">
+                <label htmlFor="username" className="text-xs sm:text-sm text-white">
                   Username
                 </label>
-                <div className="relative flex gap-2">
+                <div className="relative flex flex-col sm:flex-row gap-2">
                   <Input
                     id="username"
                     type="text"
@@ -131,12 +131,12 @@ const ForgotPassword = () => {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     required
-                    className="bg-jobwise-dark/50 border-purple-800/30 text-white placeholder:text-white/40 py-6 pl-10 w-96"
+                    className="bg-jobwise-dark/50 border-purple-800/30 text-white placeholder:text-white/40 py-4 sm:py-6 pl-4 sm:pl-10 w-full sm:flex-1"
                     />
                   <Button 
                     type="button" 
                     onClick={fetchSecurityQuestion}
-                    className="auth-btn primary-btn bg-purple-600 hover:bg-purple-700 text-white py-6"
+                    className="auth-btn primary-btn bg-purple-600 hover:bg-purple-700 text-white py-4 sm:py-6 w-full sm:w-auto whitespace-nowrap"
                   >
                     Get Question
                   </Button>
@@ -146,7 +146,7 @@ const ForgotPassword = () => {
               {showSecurityQuestion && (
                 <>
                   <div className="space-y-1">
-                    <label className="text-sm text-white">
+                    <label className="text-xs sm:text-sm text-white">
                       Security Question
                     </label>
                     <div className="relative">
@@ -160,7 +160,7 @@ const ForgotPassword = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <label htmlFor="securityAnswer" className="text-sm text-white">
+                    <label htmlFor="securityAnswer" className="text-xs sm:text-sm text-white">
                       Your Answer
                     </label>
                     <div className="relative">
@@ -180,7 +180,7 @@ const ForgotPassword = () => {
 
               {showSecurityQuestion && (
                 <div className="space-y-1">
-                  <label htmlFor="newPassword" className="text-sm text-white">
+                  <label htmlFor="newPassword" className="text-xs sm:text-sm text-white">
                     New Password
                   </label>
                   <div className="relative">
@@ -199,13 +199,13 @@ const ForgotPassword = () => {
 
               <Button
                 type="submit"
-                className="auth-btn primary-btn bg-purple-600 hover:bg-purple-700 text-white w-full py-6"
+                className="auth-btn primary-btn bg-purple-600 hover:bg-purple-700 text-white w-full py-4 sm:py-6"
               >
                 Reset Password
               </Button>
 
-              <div className="text-center text-white mt-6">
-                <p>
+              <div className="text-center text-white mt-4 sm:mt-6">
+                <p className="text-xs sm:text-sm">
                   Remembered your password?{" "}
                   <Link
                     to="/login"
