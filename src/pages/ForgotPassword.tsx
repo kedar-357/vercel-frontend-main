@@ -42,7 +42,7 @@ const ForgotPassword = () => {
 
     try {
       const res = await fetch(
-        "http://localhost:5000/api/auth/forgot-password",
+        "https://vercel-backend-main-production.up.railway.app/api/auth/forgot-password",
         {
           method: "POST",
           headers: {
