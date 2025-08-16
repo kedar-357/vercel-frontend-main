@@ -28,7 +28,21 @@ const ResumeFeedback: React.FC = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setSelectedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      
+      // Validate file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        setError('File size must be less than 10MB');
+        return;
+      }
+      
+      // Validate file type more strictly
+      if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+        setError('Please select a valid PDF file');
+        return;
+      }
+      
+      setSelectedFile(file);
       setFileUploaded(true);
       setError('');
     }
@@ -43,18 +57,37 @@ const ResumeFeedback: React.FC = () => {
     const formData = new FormData();
     formData.append('resume', selectedFile);
 
+    // Create AbortController for timeout handling
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
     try {
       setIsUploading(true);
       setFeedback(null);
       setStaticFeedback([]);
+      setError('');
+      
       const res = await fetch('https://vercel-backend-main-production.up.railway.app/api/resume-feedback', {
         method: 'POST',
         body: formData,
+        signal: controller.signal,
+        headers: {
+          // Don't set Content-Type for FormData - let browser set it with boundary
+        },
       });
 
+      clearTimeout(timeoutId);
+
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Upload failed');
+        let errorMessage = 'Upload failed';
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch {
+          // If response isn't JSON, use status text
+          errorMessage = res.statusText || `HTTP ${res.status} error`;
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await res.json();
@@ -64,7 +97,15 @@ const ResumeFeedback: React.FC = () => {
       setFileUploaded(false);
       setSelectedFile(null);
     } catch (err: any) {
-      setError(err.message);
+      clearTimeout(timeoutId);
+      
+      if (err.name === 'AbortError') {
+        setError('Upload timed out. Please check your connection and try again.');
+      } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+        setError('Network error. Please check your internet connection and try again.');
+      } else {
+        setError(err.message || 'An unexpected error occurred. Please try again.');
+      }
     } finally {
       setIsUploading(false);
     }
@@ -111,9 +152,10 @@ const ResumeFeedback: React.FC = () => {
                   <input
                     id="fileInput"
                     type="file"
-                    accept="application/pdf"
+                    accept="application/pdf,.pdf"
                     className="hidden"
                     onChange={handleFileChange}
+                    key={fileUploaded ? 'uploaded' : 'empty'} // Force re-render to clear input
                   />
                 </label>
                 <div className="absolute -top-2 -right-2 bg-green-500 text-gray-900 text-xs font-bold px-2 py-1 rounded-full">
