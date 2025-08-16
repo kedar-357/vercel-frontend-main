@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { UploadCloud, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -25,19 +25,35 @@ const ResumeFeedback: React.FC = () => {
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [activeTab, setActiveTab] = useState<string>('overall');
+  const [isMobile, setIsMobile] = useState<boolean>(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent.toLowerCase();
+      const mobileKeywords = ['mobile', 'android', 'iphone', 'ipad', 'ipod', 'blackberry', 'windows phone'];
+      return mobileKeywords.some(keyword => userAgent.includes(keyword)) || window.innerWidth <= 768;
+    };
+    setIsMobile(checkMobile());
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
+      console.log('File selected:', file.name, 'Size:', file.size, 'Type:', file.type, 'Mobile:', isMobile);
       
-      // Validate file size (10MB limit)
-      if (file.size > 10 * 1024 * 1024) {
-        setError('File size must be less than 10MB');
+      // Mobile-specific file size limit
+      const maxSize = isMobile ? 3 * 1024 * 1024 : 10 * 1024 * 1024; // 3MB for mobile, 10MB for desktop
+      if (file.size > maxSize) {
+        setError(`File size must be less than ${isMobile ? '3MB' : '10MB'} ${isMobile ? 'for mobile uploads' : ''}`);
         return;
       }
       
-      // Validate file type more strictly
-      if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      // More lenient file type checking for mobile (Google Drive files may have different MIME types)
+      const isValidPDF = file.type === 'application/pdf' || 
+                        file.name.toLowerCase().endsWith('.pdf') ||
+                        (isMobile && file.type === 'application/octet-stream' && file.name.toLowerCase().endsWith('.pdf'));
+      
+      if (!isValidPDF) {
         setError('Please select a valid PDF file');
         return;
       }
@@ -54,12 +70,15 @@ const ResumeFeedback: React.FC = () => {
       return;
     }
 
+    console.log('Starting upload for file:', selectedFile.name, 'Size:', selectedFile.size, 'Type:', selectedFile.type);
+
     const formData = new FormData();
     formData.append('resume', selectedFile);
 
-    // Create AbortController for timeout handling
+    // Create AbortController for timeout handling - longer timeout for mobile
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+    const timeout = isMobile ? 180000 : 120000; // 3 minutes for mobile, 2 minutes for desktop
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
       setIsUploading(true);
@@ -67,30 +86,45 @@ const ResumeFeedback: React.FC = () => {
       setStaticFeedback([]);
       setError('');
       
-      const res = await fetch('https://vercel-backend-main-production.up.railway.app/api/resume-feedback', {
+      console.log('Making fetch request to backend...');
+      
+      // Mobile-specific fetch configuration
+      const fetchOptions: RequestInit = {
         method: 'POST',
         body: formData,
         signal: controller.signal,
-        headers: {
-          // Don't set Content-Type for FormData - let browser set it with boundary
-        },
-      });
+        mode: 'cors',
+        credentials: 'omit',
+      };
+      
+      // Add mobile-specific headers if needed
+      if (isMobile) {
+        fetchOptions.headers = {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache',
+        };
+      }
+      
+      const res = await fetch('https://vercel-backend-main-production.up.railway.app/api/resume-feedback', fetchOptions);
 
       clearTimeout(timeoutId);
+      console.log('Response received:', res.status, res.statusText);
 
       if (!res.ok) {
-        let errorMessage = 'Upload failed';
+        let errorMessage = `Upload failed (${res.status})`;
         try {
           const errorData = await res.json();
           errorMessage = errorData.error || errorData.message || errorMessage;
-        } catch {
-          // If response isn't JSON, use status text
+          console.log('Error response data:', errorData);
+        } catch (parseErr) {
+          console.log('Could not parse error response:', parseErr);
           errorMessage = res.statusText || `HTTP ${res.status} error`;
         }
         throw new Error(errorMessage);
       }
 
       const data = await res.json();
+      console.log('Success response received:', data);
       setFeedback(data.feedback);
       setStaticFeedback(data.staticFeedback || []);
       // Reset file uploaded state after successful analysis
@@ -98,11 +132,14 @@ const ResumeFeedback: React.FC = () => {
       setSelectedFile(null);
     } catch (err: any) {
       clearTimeout(timeoutId);
+      console.error('Upload error:', err);
       
       if (err.name === 'AbortError') {
-        setError('Upload timed out. Please check your connection and try again.');
-      } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-        setError('Network error. Please check your internet connection and try again.');
+        setError('Upload timed out. The file may be too large or your connection is slow.');
+      } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError') || err.message.includes('TypeError')) {
+        setError('Cannot connect to server. Please check if the backend is running and try again.');
+      } else if (err.message.includes('CORS')) {
+        setError('Cross-origin request blocked. Please try refreshing the page.');
       } else {
         setError(err.message || 'An unexpected error occurred. Please try again.');
       }
@@ -152,10 +189,11 @@ const ResumeFeedback: React.FC = () => {
                   <input
                     id="fileInput"
                     type="file"
-                    accept="application/pdf,.pdf"
+                    accept={isMobile ? ".pdf,application/pdf,application/octet-stream" : "application/pdf,.pdf"}
                     className="hidden"
                     onChange={handleFileChange}
                     key={fileUploaded ? 'uploaded' : 'empty'} // Force re-render to clear input
+                    capture={isMobile ? undefined : false} // Prevent camera capture on mobile
                   />
                 </label>
                 <div className="absolute -top-2 -right-2 bg-green-500 text-gray-900 text-xs font-bold px-2 py-1 rounded-full">
@@ -361,9 +399,17 @@ const ResumeFeedback: React.FC = () => {
         )}
 
         {error && (
-          <Card className="bg-red-900/30 border border-red-700 rounded-xl p-6 max-w-2xl mx-auto">
+          <Card className="bg-red-900/30 border border-red-700 rounded-xl p-6 max-w-2xl mx-auto animate-fade-in">
             <CardContent>
               <p className="text-red-300 text-center font-medium">{error}</p>
+              <div className="mt-4 text-center">
+                <button 
+                  onClick={() => setError('')}
+                  className="text-red-400 hover:text-red-300 text-sm underline"
+                >
+                  Dismiss
+                </button>
+              </div>
             </CardContent>
           </Card>
         )}
