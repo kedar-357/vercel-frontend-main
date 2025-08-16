@@ -23,7 +23,7 @@ const ResumeFeedback: React.FC = () => {
   const [feedback, setFeedback] = useState<any>(null);
   const [staticFeedback, setStaticFeedback] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState<boolean>(false);
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('overall');
   const [isMobile, setIsMobile] = useState<boolean>(false);
 
@@ -36,32 +36,39 @@ const ResumeFeedback: React.FC = () => {
     setIsMobile(checkMobile());
   }, []);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      console.log('File selected:', file.name, 'Size:', file.size, 'Type:', file.type, 'Mobile:', isMobile);
-      
-      // Mobile-specific file size limit
-      const maxSize = isMobile ? 3 * 1024 * 1024 : 10 * 1024 * 1024; // 3MB for mobile, 10MB for desktop
-      if (file.size > maxSize) {
-        setError(`File size must be less than ${isMobile ? '3MB' : '10MB'} ${isMobile ? 'for mobile uploads' : ''}`);
-        return;
-      }
-      
-      // More lenient file type checking for mobile (Google Drive files may have different MIME types)
-      const isValidPDF = file.type === 'application/pdf' || 
-                        file.name.toLowerCase().endsWith('.pdf') ||
-                        (isMobile && file.type === 'application/octet-stream' && file.name.toLowerCase().endsWith('.pdf'));
-      
-      if (!isValidPDF) {
-        setError('Please select a valid PDF file');
-        return;
-      }
-      
-      setSelectedFile(file);
-      setFileUploaded(true);
-      setError('');
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    console.log('File selected:', file.name, 'Size:', file.size, 'Type:', file.type, 'Mobile:', isMobile);
+
+    // --- check by extension ---
+    const isPdfByName = file.name.toLowerCase().endsWith('.pdf');
+
+    // --- optional: check first few bytes for "%PDF-" magic number ---
+    const checkMagic = async (f: File) => {
+      const blob = f.slice(0, 5);
+      const text = await blob.text();
+      return text === '%PDF-';
+    };
+    const isPdfByMagic = await checkMagic(file);
+
+    if (!isPdfByName || !isPdfByMagic) {
+      setError('Please upload a valid PDF file');
+      return;
     }
+
+    // --- file size check (max 5MB) ---
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setError('File size should not exceed 5 MB');
+      return;
+    }
+
+    // ✅ success
+    setError(null);
+    setSelectedFile(file);
+    setFileUploaded(true);
   };
 
   const handleUpload = async () => {
@@ -84,7 +91,7 @@ const ResumeFeedback: React.FC = () => {
       setIsUploading(true);
       setFeedback(null);
       setStaticFeedback([]);
-      setError('');
+      setError(null);
       
       console.log('Making fetch request to backend...');
       
@@ -404,7 +411,7 @@ const ResumeFeedback: React.FC = () => {
               <p className="text-red-300 text-center font-medium">{error}</p>
               <div className="mt-4 text-center">
                 <button 
-                  onClick={() => setError('')}
+                  onClick={() => setError(null)}
                   className="text-red-400 hover:text-red-300 text-sm underline"
                 >
                   Dismiss
