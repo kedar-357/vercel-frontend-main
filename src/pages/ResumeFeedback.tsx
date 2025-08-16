@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { UploadCloud, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -23,52 +23,15 @@ const ResumeFeedback: React.FC = () => {
   const [feedback, setFeedback] = useState<any>(null);
   const [staticFeedback, setStaticFeedback] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string>('');
   const [activeTab, setActiveTab] = useState<string>('overall');
-  const [isMobile, setIsMobile] = useState<boolean>(false);
 
-  useEffect(() => {
-    const checkMobile = () => {
-      const userAgent = navigator.userAgent.toLowerCase();
-      const mobileKeywords = ['mobile', 'android', 'iphone', 'ipad', 'ipod', 'blackberry', 'windows phone'];
-      return mobileKeywords.some(keyword => userAgent.includes(keyword)) || window.innerWidth <= 768;
-    };
-    setIsMobile(checkMobile());
-  }, []);
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    console.log('File selected:', file.name, 'Size:', file.size, 'Type:', file.type, 'Mobile:', isMobile);
-
-    // --- check by extension ---
-    const isPdfByName = file.name.toLowerCase().endsWith('.pdf');
-
-    // --- optional: check first few bytes for "%PDF-" magic number ---
-    const checkMagic = async (f: File) => {
-      const blob = f.slice(0, 5);
-      const text = await blob.text();
-      return text === '%PDF-';
-    };
-    const isPdfByMagic = await checkMagic(file);
-
-    if (!isPdfByName || !isPdfByMagic) {
-      setError('Please upload a valid PDF file');
-      return;
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setSelectedFile(e.target.files[0]);
+      setFileUploaded(true);
+      setError('');
     }
-
-    // --- file size check (max 5MB) ---
-    const maxSize = 5 * 1024 * 1024;
-    if (file.size > maxSize) {
-      setError('File size should not exceed 5 MB');
-      return;
-    }
-
-    // ✅ success
-    setError(null);
-    setSelectedFile(file);
-    setFileUploaded(true);
   };
 
   const handleUpload = async () => {
@@ -77,79 +40,32 @@ const ResumeFeedback: React.FC = () => {
       return;
     }
 
-    console.log('Starting upload for file:', selectedFile.name, 'Size:', selectedFile.size, 'Type:', selectedFile.type);
-
     const formData = new FormData();
     formData.append('resume', selectedFile);
-
-    // Create AbortController for timeout handling - longer timeout for mobile
-    const controller = new AbortController();
-    const timeout = isMobile ? 180000 : 120000; // 3 minutes for mobile, 2 minutes for desktop
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
       setIsUploading(true);
       setFeedback(null);
       setStaticFeedback([]);
-      setError(null);
-      
-      console.log('Making fetch request to backend...');
-      
-      // Mobile-specific fetch configuration
-      const fetchOptions: RequestInit = {
+      const res = await fetch('http://localhost:5000/api/resume-feedback', {
         method: 'POST',
         body: formData,
-        signal: controller.signal,
-        mode: 'cors',
-        credentials: 'omit',
-      };
-      
-      // Add mobile-specific headers if needed
-      if (isMobile) {
-        fetchOptions.headers = {
-          'Accept': 'application/json',
-          'Cache-Control': 'no-cache',
-        };
-      }
-      
-      const res = await fetch('https://vercel-backend-main-production.up.railway.app/api/resume-feedback', fetchOptions);
-
-      clearTimeout(timeoutId);
-      console.log('Response received:', res.status, res.statusText);
+      });
 
       if (!res.ok) {
-        let errorMessage = `Upload failed (${res.status})`;
-        try {
-          const errorData = await res.json();
-          errorMessage = errorData.error || errorData.message || errorMessage;
-          console.log('Error response data:', errorData);
-        } catch (parseErr) {
-          console.log('Could not parse error response:', parseErr);
-          errorMessage = res.statusText || `HTTP ${res.status} error`;
-        }
-        throw new Error(errorMessage);
+        const errorData = await res.json();
+        throw new Error(errorData.error || `Upload failed with status ${res.status}`);
       }
 
       const data = await res.json();
-      console.log('Success response received:', data);
       setFeedback(data.feedback);
       setStaticFeedback(data.staticFeedback || []);
       // Reset file uploaded state after successful analysis
       setFileUploaded(false);
       setSelectedFile(null);
     } catch (err: any) {
-      clearTimeout(timeoutId);
       console.error('Upload error:', err);
-      
-      if (err.name === 'AbortError') {
-        setError('Upload timed out. The file may be too large or your connection is slow.');
-      } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError') || err.message.includes('TypeError')) {
-        setError('Cannot connect to server. Please check if the backend is running and try again.');
-      } else if (err.message.includes('CORS')) {
-        setError('Cross-origin request blocked. Please try refreshing the page.');
-      } else {
-        setError(err.message || 'An unexpected error occurred. Please try again.');
-      }
+      setError(err.message || 'An unexpected error occurred during upload');
     } finally {
       setIsUploading(false);
     }
@@ -196,11 +112,9 @@ const ResumeFeedback: React.FC = () => {
                   <input
                     id="fileInput"
                     type="file"
-                    accept={isMobile ? ".pdf,application/pdf,application/octet-stream" : "application/pdf,.pdf"}
+                    accept="application/pdf"
                     className="hidden"
                     onChange={handleFileChange}
-                    key={fileUploaded ? 'uploaded' : 'empty'} // Force re-render to clear input
-                    capture={isMobile ? undefined : false} // Prevent camera capture on mobile
                   />
                 </label>
                 <div className="absolute -top-2 -right-2 bg-green-500 text-gray-900 text-xs font-bold px-2 py-1 rounded-full">
@@ -406,17 +320,9 @@ const ResumeFeedback: React.FC = () => {
         )}
 
         {error && (
-          <Card className="bg-red-900/30 border border-red-700 rounded-xl p-6 max-w-2xl mx-auto animate-fade-in">
+          <Card className="bg-red-900/30 border border-red-700 rounded-xl p-6 max-w-2xl mx-auto">
             <CardContent>
               <p className="text-red-300 text-center font-medium">{error}</p>
-              <div className="mt-4 text-center">
-                <button 
-                  onClick={() => setError(null)}
-                  className="text-red-400 hover:text-red-300 text-sm underline"
-                >
-                  Dismiss
-                </button>
-              </div>
             </CardContent>
           </Card>
         )}
