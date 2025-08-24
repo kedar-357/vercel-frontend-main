@@ -234,6 +234,7 @@ const JDAnalysis = () => {
                   Upload Your Documents
                 </CardTitle>
                 <p className="text-gray-400 mt-2">Get AI-powered insights to optimize your job application</p>
+                <p className="text-gray-400 mt-1">Please choose files from local storage to upload</p>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-col lg:flex-row gap-8 items-center justify-center mb-8 p-4">
