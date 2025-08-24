@@ -230,7 +230,6 @@ const ResumeFeedback: React.FC = () => {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="pt-6">
-                        <p className="text-gray-400 mt-1">Please choose files from local storage to upload</p>
                         <ul className="space-y-3">
                           {feedback.strengths && feedback.strengths.map((strength: string, i: number) => (
                             <li key={i} className="flex items-start">
